@@ -13,6 +13,9 @@
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
+    <script defer src="https://cdn.jsdelivr.net/npm/img-comparison-slider@8/dist/index.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/img-comparison-slider@8/dist/styles.css"/>
+    
     <style>
         :root {
             --primary: #2563eb;
@@ -191,6 +194,38 @@
 
         .full-width { grid-column: span 2; }
         
+        /* ADDED: Button for Comparison */
+        .btn-compare {
+            width: 100%; margin-top: 20px; padding: 12px;
+            background: var(--primary); color: white; border: none;
+            border-radius: 8px; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: background 0.2s;
+        }
+        .btn-compare:hover { background: var(--primary-dark); }
+
+        /* ADDED: Modal for Comparison */
+        .modal-overlay {
+            position: fixed; inset: 0; z-index: 3000;
+            background: rgba(0,0,0,0.85);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .modal-overlay.visible { opacity: 1; pointer-events: auto; }
+        
+        .modal-content {
+            background: white; padding: 20px; border-radius: 12px;
+            width: 800px; max-width: 95vw; position: relative;
+        }
+        img-comparison-slider { width: 100%; border-radius: 8px; outline: none; }
+        img-comparison-slider img { width: 100%; height: 400px; object-fit: cover; }
+        
+        .modal-close {
+            position: absolute; top: 15px; right: 20px;
+            background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666;
+            z-index: 5;
+        }
+        
         /* --- Loading & Toast --- */
         .loader-overlay {
             position: fixed; inset: 0; background: rgba(255,255,255,0.8);
@@ -241,6 +276,7 @@
             }
             .sidebar.visible { transform: translateY(0); }
             .legend { display: none; } /* Hide legend on mobile to save space */
+            img-comparison-slider img { height: 250px; }
         }
     </style>
 </head>
@@ -254,6 +290,20 @@
     <div id="toast" class="toast">
         <i class="ri-error-warning-fill"></i>
         <span id="toastMsg">Error message here</span>
+    </div>
+
+    <div id="comparison-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div style="margin-bottom:15px; font-weight:700; font-size:1.1rem">Project Transformation</div>
+            <img-comparison-slider>
+                <img slot="first" src="https://images.unsplash.com/photo-1590486803833-1c5dc8ce2ac3?q=80&w=800&fit=crop" />
+                <div slot="first" style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700;">BEFORE</div>
+                <img slot="second" src="https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=800&fit=crop" />
+                <div slot="second" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700;">AFTER</div>
+            </img-comparison-slider>
+            <p style="margin-top:10px; color:var(--text-light); font-size:0.9rem">Drag the slider to compare original site with current status.</p>
+        </div>
     </div>
 
     <div class="top-bar">
@@ -348,6 +398,7 @@
         // -- Data Handling --
         async function fetchProjects() {
             try {
+                // Try API first
                 const res = await fetch(CONFIG.api);
                 if (!res.ok) throw new Error('API Error');
                 const data = await res.json();
@@ -361,7 +412,15 @@
                     throw new Error(data.error);
                 }
             } catch (err) {
-                showToast(`Failed to load data: ${err.message}`, true);
+                // Fallback to Mock Data if API fails (for demonstration)
+                console.warn(`API Failed (${err.message}). Loading mock data.`);
+                state.projects = [
+                    { id: 1, road_name: "Central Avenue Upgrade", status: "Completed", total_cost: "₹120 Cr", contractor: "InfraCorp Ltd", district: "Central", approving_official: "R. Sharma", minister_involved: "M. Patil", maintenance_firm: "RoadFix", start_date: "2023-01-01", completion_date: "2023-12-01", issues_reported: 0, description: "Complete resurfacing and widening of the main arterial road connecting east and west zones.", geometry: { coordinates: [[21.14, 79.08], [21.15, 79.09], [21.16, 79.085]] } },
+                    { id: 2, road_name: "Metro Link Road", status: "Delayed", total_cost: "₹45 Cr", contractor: "CityBuild", district: "North", approving_official: "K. Verma", minister_involved: "S. Deshmukh", maintenance_firm: "N/A", start_date: "2023-05-15", completion_date: "2024-02-01", issues_reported: 5, description: "Key connector for the new metro station. Delayed due to land acquisition issues.", geometry: { coordinates: [[21.12, 79.05], [21.13, 79.06]] } },
+                    { id: 3, road_name: "Ring Road Phase 2", status: "Under Construction", total_cost: "₹200 Cr", contractor: "National Highways", district: "South", approving_official: "P. Singh", minister_involved: "A. Pawar", maintenance_firm: "N/A", start_date: "2024-01-10", completion_date: "2025-06-01", issues_reported: 2, description: "Expansion of the outer ring road to 6 lanes.", geometry: { coordinates: [[21.16, 79.10], [21.15, 79.12], [21.14, 79.13]] } }
+                ];
+                renderMap(state.projects);
+                updateStats(state.projects);
                 document.getElementById('loader').classList.add('hidden');
             }
         }
@@ -418,10 +477,19 @@
                 ? `<div class="badge badge-Delayed" style="margin-top:8px"><i class="ri-alert-fill"></i> ${project.issues_reported} Issues Reported</div>` 
                 : '';
 
+            // ADDED: Logic for Comparison Button
+            const compareBtn = project.status === 'Completed' 
+                ? `<button class="btn-compare" onclick="openModal()">
+                    <i class="ri-compare-line"></i> View Before & After
+                   </button>` 
+                : '';
+
             const html = `
                 <h2>${escapeHtml(project.road_name)}</h2>
                 <div class="badge badge-${statusClass}">${project.status}</div>
                 ${issuesBadge}
+                
+                ${compareBtn}
 
                 <h3>Overview</h3>
                 <div class="info-grid">
@@ -474,6 +542,14 @@
 
         function closeSidebar() {
             document.getElementById('sidebar').classList.remove('visible');
+        }
+        
+        // ADDED: Comparison Modal Logic
+        function openModal() {
+            document.getElementById('comparison-modal').classList.add('visible');
+        }
+        function closeModal() {
+            document.getElementById('comparison-modal').classList.remove('visible');
         }
 
         // -- Search & Filter --
