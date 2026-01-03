@@ -9,6 +9,35 @@ logger = logging.getLogger(__name__)
 # Sample project data for Nagpur
 SAMPLE_PROJECTS = [
     {
+  "road_name": "Hindu Hrudaysamrat Balasaheb Thackeray Maharashtra Samruddhi Mahamarg",
+  "contractor": "Multiple (Megha Engg, Afcons, L&T, NCC, PNC Infratech, Reliance Infra, etc.)",
+  "approving_official": "Vice Chairman & Managing Director, MSRDC",
+  "total_cost": "₹55,335 Crore",
+  "minister_involved": "Minister of Public Works (Public Undertakings), Maharashtra",
+  "maintenance_firm": "MSRDC (Infrastructure Management Department)",
+  "status": "Completed",
+  "start_date": "2019-01-01",
+  "completion_date": "2025-06-05",
+  "district": "Multiple (Nagpur, Wardha, Amravati, Washim, Buldhana, Jalna, Aurangabad, Nashik, Ahmednagar, Thane)",
+  "issues_reported": 0,
+  "description": "A 701 km long, 6-lane access-controlled expressway connecting Nagpur and Mumbai. It is designed for speeds up to 150 km/h and reduces travel time to ~8 hours. Features include wildlife overpasses and Krushi Samruddhi Nagar townships.",
+  "geometry": {
+    "type": "LineString",
+    "coordinates": [
+      [78.9900, 21.0200],
+      [78.1998, 21.0314],
+      [77.6500, 20.5800],
+      [77.6400, 20.5500],
+      [77.1670, 20.3270],
+      [76.0600, 19.9400],
+      [74.6700, 19.8700],
+      [74.0006, 19.8531],
+      [73.5200, 19.6000],
+      [73.0672, 19.3872]
+    ]
+  }
+},
+    {
         "road_name": "Wardha Road Widening",
         "contractor": "L&T Construction",
         "approving_official": "Chief Engineer, PWD Nagpur",
