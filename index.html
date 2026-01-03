@@ -2,293 +2,469 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="RoadTrack - Public Accountability Portal for Road Infrastructure Projects">
-    <title>RoadTrack - Public Accountability Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="RoadTrack - Public Accountability Portal for Road Infrastructure">
+    <title>RoadTrack | Infrastructure Dashboard</title>
     
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
-
-        header {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 1rem 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --surface: rgba(255, 255, 255, 0.95);
+            --surface-blur: blur(12px);
+            --text-main: #1f2937;
+            --text-light: #6b7280;
+            --border: #e5e7eb;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            
+            /* Status Colors */
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --z-map: 1;
+            --z-ui: 1000;
+            --z-modal: 2000;
         }
 
-        .header-content {
-            display: flex; justify-content: space-between; align-items: center;
-            flex-wrap: wrap; gap: 1rem; max-width: 1400px; margin: 0 auto;
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            overflow: hidden; 
+            color: var(--text-main);
+            background: #f3f4f6;
         }
 
-        .logo {
-            color: white; font-size: 1.5rem; font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .search-box { flex: 1; max-width: 400px; min-width: 200px; }
-        .search-box input {
-            margin: 0; background: white; border: none; padding: 0.7rem;
-            border-radius: 8px; width: 100%;
-        }
-
-        .stats {
-            display: flex; gap: 1.5rem; color: white; font-size: 0.9rem;
-        }
-        .stats span { white-space: nowrap; }
-        .stats strong { font-weight: bold; color: #ffd700; }
-
+        /* --- Map Container --- */
         #map {
-            position: fixed; top: 80px; left: 0; right: 0; bottom: 0; z-index: 1;
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: var(--z-map);
+            background: #cbd5e1; /* Placeholder color */
         }
 
-        #loading {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 2000; background: white; padding: 2rem 3rem; border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3); text-align: center; font-size: 1.2rem;
+        /* --- Floating UI Components --- */
+        .glass-panel {
+            background: var(--surface);
+            backdrop-filter: var(--surface-blur);
+            -webkit-backdrop-filter: var(--surface-blur);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: var(--shadow);
+            border-radius: 12px;
         }
-        #loading.hidden { display: none; }
 
-        #error {
-            position: fixed; top: 100px; left: 50%; transform: translateX(-50%);
-            z-index: 2000; background: #fee2e2; color: #991b1b; padding: 1rem 2rem;
-            border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            max-width: 500px; display: none;
+        /* Header / Search Bar */
+        .top-bar {
+            position: absolute; top: 20px; left: 20px;
+            z-index: var(--z-ui);
+            display: flex; flex-direction: column; gap: 12px;
+            width: 380px; max-width: calc(100vw - 40px);
         }
-        #error.visible { display: block; }
 
-        #sidebar {
-            position: fixed; top: 80px; right: 0; bottom: 0; width: 400px;
-            background: white; box-shadow: -2px 0 10px rgba(0,0,0,0.3);
-            z-index: 1500; overflow-y: auto; transform: translateX(100%);
-            transition: transform 0.3s ease; padding: 2rem;
+        .search-container {
+            display: flex; align-items: center;
+            padding: 8px 16px;
+            transition: box-shadow 0.2s;
         }
-        #sidebar.visible { transform: translateX(0); }
+        
+        .search-container:focus-within {
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary);
+        }
+
+        .brand-icon {
+            font-size: 1.2rem; margin-right: 12px; color: var(--primary);
+        }
+
+        .search-input {
+            border: none; background: transparent;
+            font-size: 1rem; flex: 1; padding: 8px 0;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            outline: none;
+        }
+
+        .filter-chips {
+            display: flex; gap: 8px; overflow-x: auto; 
+            padding-bottom: 4px; /* Scrollbar spacing */
+            scrollbar-width: none;
+        }
+        .filter-chips::-webkit-scrollbar { display: none; }
+
+        .chip {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem; font-weight: 500;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .chip:hover { background: #f9fafb; }
+        .chip.active {
+            background: var(--text-main);
+            color: white;
+            border-color: var(--text-main);
+        }
+        
+        /* Specific chip colors when active */
+        .chip[data-status="Completed"].active { background: var(--success); border-color: var(--success); }
+        .chip[data-status="Under Construction"].active { background: var(--warning); border-color: var(--warning); color: black; }
+        .chip[data-status="Delayed"].active { background: var(--danger); border-color: var(--danger); }
+
+        /* --- Stats Card (Top Right) --- */
+        .stats-card {
+            position: absolute; top: 20px; right: 20px;
+            z-index: var(--z-ui);
+            padding: 16px;
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 24px; min-width: 300px;
+        }
+
+        .stat-item { display: flex; flex-direction: column; }
+        .stat-label { font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+        .stat-value { font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
+        
+        /* --- Sidebar / Drawer --- */
+        .sidebar {
+            position: absolute; top: 0; right: 0; bottom: 0;
+            width: 450px;
+            background: white;
+            z-index: var(--z-modal);
+            transform: translateX(100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: -4px 0 25px rgba(0,0,0,0.1);
+            display: flex; flex-direction: column;
+        }
+
+        .sidebar.visible { transform: translateX(0); }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: flex-start;
+        }
 
         .close-btn {
-            position: absolute; top: 1rem; right: 1rem; background: #ef4444;
-            color: white; border: none; padding: 0.5rem 1rem; cursor: pointer;
-            border-radius: 5px; font-weight: bold;
+            background: #f3f4f6; border: none;
+            width: 32px; height: 32px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: var(--text-main);
+            transition: background 0.2s;
         }
-        .close-btn:hover { background: #dc2626; }
+        .close-btn:hover { background: #e5e7eb; }
 
-        .status-badge {
-            display: inline-block; padding: 0.3rem 0.8rem; border-radius: 20px;
-            font-size: 0.85rem; font-weight: bold; margin-bottom: 1rem;
-        }
-        .status-completed { background: #22c55e; color: white; }
-        .status-under-construction { background: #eab308; color: black; }
-        .status-delayed { background: #ef4444; color: white; }
-
-        .detail-section {
-            margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #e5e7eb;
-        }
-        .detail-section:last-child { border-bottom: none; }
-        .detail-section h3 {
-            font-size: 0.9rem; color: #667eea; text-transform: uppercase;
-            margin-bottom: 0.5rem;
-        }
-        .detail-section p { margin: 0.3rem 0; color: #374151; }
-        .detail-section strong { color: #111827; }
-
-        .issues-badge {
-            background: #fee2e2; color: #dc2626; padding: 0.2rem 0.6rem;
-            border-radius: 10px; font-size: 0.85rem; font-weight: bold;
+        .sidebar-content {
+            padding: 24px; overflow-y: auto; flex: 1;
         }
 
+        /* Sidebar Typography */
+        h2 { font-size: 1.5rem; font-weight: 700; line-height: 1.2; margin-bottom: 12px; color: var(--text-main); }
+        h3 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; color: var(--text-light); margin: 24px 0 12px 0; letter-spacing: 0.05em; }
+        
+        .badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 12px; border-radius: 6px;
+            font-size: 0.85rem; font-weight: 600;
+        }
+        .badge-Completed { background: #d1fae5; color: #065f46; }
+        .badge-Under-Construction { background: #fef3c7; color: #92400e; }
+        .badge-Delayed { background: #fee2e2; color: #991b1b; }
+
+        .info-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+        }
+        .info-item { background: #f9fafb; padding: 12px; border-radius: 8px; }
+        .info-item label { display: block; font-size: 0.75rem; color: var(--text-light); margin-bottom: 4px; }
+        .info-item div { font-weight: 500; font-size: 0.95rem; }
+
+        .full-width { grid-column: span 2; }
+        
+        /* --- Loading & Toast --- */
+        .loader-overlay {
+            position: fixed; inset: 0; background: rgba(255,255,255,0.8);
+            z-index: 2000; display: flex; align-items: center; justify-content: center;
+            flex-direction: column; gap: 16px;
+            transition: opacity 0.3s;
+        }
+        .loader-overlay.hidden { opacity: 0; pointer-events: none; }
+        
+        .spinner {
+            width: 40px; height: 40px; border: 3px solid var(--border);
+            border-top-color: var(--primary); border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: #1f2937; color: white;
+            padding: 12px 24px; border-radius: 50px;
+            box-shadow: var(--shadow-lg); z-index: 2001;
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.9rem; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .toast.visible { transform: translateX(-50%) translateY(0); }
+
+        /* --- Legend --- */
         .legend {
-            position: fixed; bottom: 20px; left: 20px; background: white;
-            padding: 1rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            z-index: 1000; font-size: 0.85rem;
+            position: absolute; bottom: 20px; left: 20px;
+            z-index: var(--z-ui); padding: 12px;
+            display: flex; flex-direction: column; gap: 8px;
         }
-        .legend h4 { margin: 0 0 0.5rem 0; font-size: 0.9rem; }
-        .legend-item {
-            display: flex; align-items: center; gap: 0.5rem; margin: 0.3rem 0;
-        }
-        .legend-line {
-            width: 30px; height: 4px; border-radius: 2px;
-        }
+        .legend-item { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; font-weight: 500; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
 
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- Mobile Responsive --- */
         @media (max-width: 768px) {
-            #sidebar {
-                width: 100%; height: 60vh; top: auto; bottom: 0;
-                transform: translateY(100%);
+            .top-bar { width: calc(100% - 40px); }
+            .stats-card { 
+                top: auto; bottom: 160px; right: 20px; left: 20px;
+                grid-template-columns: repeat(3, 1fr);
             }
-            #sidebar.visible { transform: translateY(0); }
-            .stats { display: none; }
-            .header-content { flex-direction: column; }
-            .search-box { max-width: 100%; }
+            .sidebar {
+                width: 100%; height: 70vh; top: auto; bottom: 0;
+                transform: translateY(100%);
+                border-radius: 20px 20px 0 0;
+            }
+            .sidebar.visible { transform: translateY(0); }
+            .legend { display: none; } /* Hide legend on mobile to save space */
         }
     </style>
 </head>
 <body>
-    <header>
-        <div class="header-content">
-            <div class="logo">🛣️ RoadTrack</div>
-            <div class="search-box">
-                <input type="search" id="searchInput" placeholder="Search by road name or district..." />
-            </div>
-            <div class="stats">
-                <span>📊 Projects: <strong id="totalProjects">0</strong></span>
-                <span>💰 Investment: <strong id="totalInvestment">₹0</strong></span>
-                <span>⚠️ Issues: <strong id="totalIssues">0</strong></span>
-            </div>
-        </div>
-    </header>
 
-    <div id="loading">🔄 Loading projects...</div>
-    <div id="error">
-        <strong>Error:</strong> <span id="errorMessage"></span>
+    <div id="loader" class="loader-overlay">
+        <div class="spinner"></div>
+        <div style="font-weight: 500; color: var(--text-light)">Loading Projects...</div>
+    </div>
+
+    <div id="toast" class="toast">
+        <i class="ri-error-warning-fill"></i>
+        <span id="toastMsg">Error message here</span>
+    </div>
+
+    <div class="top-bar">
+        <div class="glass-panel search-container">
+            <i class="ri-search-line brand-icon"></i>
+            <input type="text" id="searchInput" class="search-input" placeholder="Search roads, districts, or contractors...">
+        </div>
+        
+        <div class="filter-chips">
+            <div class="chip active" onclick="filterMap('All', this)">All</div>
+            <div class="chip" data-status="Completed" onclick="filterMap('Completed', this)">Completed</div>
+            <div class="chip" data-status="Under Construction" onclick="filterMap('Under Construction', this)">Construction</div>
+            <div class="chip" data-status="Delayed" onclick="filterMap('Delayed', this)">Delayed</div>
+        </div>
+    </div>
+
+    <div class="glass-panel stats-card">
+        <div class="stat-item">
+            <span class="stat-label">Total Projects</span>
+            <span class="stat-value" id="statCount">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Investment</span>
+            <span class="stat-value" id="statCost">₹0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Issues</span>
+            <span class="stat-value" id="statIssues" style="color: var(--danger)">0</span>
+        </div>
+    </div>
+
+    <div class="glass-panel legend">
+        <div class="legend-item"><div class="dot" style="background: var(--success)"></div> Completed</div>
+        <div class="legend-item"><div class="dot" style="background: var(--warning)"></div> Construction</div>
+        <div class="legend-item"><div class="dot" style="background: var(--danger)"></div> Delayed</div>
     </div>
 
     <div id="map"></div>
 
-    <div class="legend">
-        <h4>Road Status</h4>
-        <div class="legend-item">
-            <div class="legend-line" style="background: #22c55e;"></div>
-            <span>Completed</span>
+    <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-light); text-transform: uppercase;">Project Details</div>
+            <button class="close-btn" onclick="closeSidebar()"><i class="ri-close-line"></i></button>
         </div>
-        <div class="legend-item">
-            <div class="legend-line" style="background: #eab308;"></div>
-            <span>Under Construction</span>
-        </div>
-        <div class="legend-item">
-            <div class="legend-line" style="background: #ef4444;"></div>
-            <span>Delayed</span>
-        </div>
-    </div>
-
-    <aside id="sidebar">
-        <button class="close-btn" onclick="closeSidebar()">✕ Close</button>
-        <div id="sidebarContent"></div>
+        <div id="sidebarContent" class="sidebar-content">
+            </div>
     </aside>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
     <script>
-        let map, allProjects = [], polylines = {};
-
-        const statusColors = {
-            'Completed': '#22c55e',
-            'Under Construction': '#eab308',
-            'Delayed': '#ef4444'
+        // -- Configuration --
+        const CONFIG = {
+            colors: {
+                'Completed': '#10b981',
+                'Under Construction': '#f59e0b',
+                'Delayed': '#ef4444',
+                'Default': '#6b7280'
+            },
+            api: '/api/projects'
         };
 
-        function showError(message) {
-            const errorDiv = document.getElementById('error');
-            document.getElementById('errorMessage').textContent = message;
-            errorDiv.classList.add('visible');
-            setTimeout(() => errorDiv.classList.remove('visible'), 5000);
-        }
+        // -- State --
+        let state = {
+            map: null,
+            projects: [],
+            layers: {},
+            currentFilter: 'All'
+        };
+
+        // -- Initialization --
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            fetchProjects();
+        });
 
         function initMap() {
-            map = L.map('map').setView([21.1458, 79.0882], 12);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors',
-                maxZoom: 19
-            }).addTo(map);
+            // Initialize map with a clean, light basemap
+            state.map = L.map('map', {
+                zoomControl: false // We'll move zoom control if needed, or rely on scroll/pinch
+            }).setView([21.1458, 79.0882], 12);
+
+            // Using CartoDB Positron for a cleaner UI look that matches the theme
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                maxZoom: 20
+            }).addTo(state.map);
+            
+            // Add zoom control to bottom right
+            L.control.zoom({ position: 'bottomright' }).addTo(state.map);
         }
 
-        async function loadProjects() {
+        // -- Data Handling --
+        async function fetchProjects() {
             try {
-                const response = await fetch('/api/projects');
+                const res = await fetch(CONFIG.api);
+                if (!res.ok) throw new Error('API Error');
+                const data = await res.json();
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                
-                if (data.success && data.projects) {
-                    allProjects = data.projects;
-                    displayProjects(allProjects);
-                    updateStats(allProjects);
-                    document.getElementById('loading').classList.add('hidden');
-                    console.log(`✅ Loaded ${data.count} projects`);
+                if (data.success) {
+                    state.projects = data.projects;
+                    renderMap(state.projects);
+                    updateStats(state.projects);
+                    document.getElementById('loader').classList.add('hidden');
                 } else {
-                    throw new Error(data.error || 'Failed to load projects');
+                    throw new Error(data.error);
                 }
-            } catch (error) {
-                console.error('Error loading projects:', error);
-                showError('Failed to connect to server. Please check if the API is running.');
-                document.getElementById('loading').classList.add('hidden');
+            } catch (err) {
+                showToast(`Failed to load data: ${err.message}`, true);
+                document.getElementById('loader').classList.add('hidden');
             }
         }
 
-        function displayProjects(projects) {
-            Object.values(polylines).forEach(p => map.removeLayer(p));
-            polylines = {};
+        function renderMap(projects) {
+            // Clear existing layers
+            Object.values(state.layers).forEach(layer => state.map.removeLayer(layer));
+            state.layers = {};
 
-            if (projects.length === 0) {
-                showError('No projects found matching your search.');
-                return;
-            }
+            const bounds = L.latLngBounds();
 
-            projects.forEach(project => {
-                const color = statusColors[project.status] || '#6b7280';
-                const coordinates = project.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+            projects.forEach(p => {
+                const color = CONFIG.colors[p.status] || CONFIG.colors['Default'];
+                const coords = p.geometry.coordinates.map(c => [c[1], c[0]]); // GeoJSON is LngLat, Leaflet needs LatLng
                 
-                const polyline = L.polyline(coordinates, {
+                // Create polyline with interaction
+                const polyline = L.polyline(coords, {
                     color: color,
-                    weight: 5,
-                    opacity: 0.8
-                }).addTo(map);
+                    weight: 4,
+                    opacity: 0.8,
+                    lineCap: 'round',
+                    lineJoin: 'round'
+                }).addTo(state.map);
 
-                polyline.on('click', () => {
-                    showProjectDetails(project);
-                    polyline.setStyle({ weight: 8, color: '#3b82f6' });
-                    setTimeout(() => {
-                        polyline.setStyle({ weight: 5, color: color });
-                    }, 2000);
+                // Hover effect
+                polyline.on('mouseover', function() {
+                    this.setStyle({ weight: 8, opacity: 1 });
+                });
+                polyline.on('mouseout', function() {
+                    this.setStyle({ weight: 4, opacity: 0.8 });
                 });
 
-                polylines[project.id] = polyline;
+                // Click event
+                polyline.on('click', (e) => {
+                    L.DomEvent.stopPropagation(e); // Prevent map click
+                    selectProject(p);
+                    // Slight pan to center line, offset for sidebar
+                    state.map.flyToBounds(polyline.getBounds(), { padding: [50, 50], duration: 0.8 });
+                });
+
+                state.layers[p.id] = polyline;
+                bounds.extend(polyline.getBounds());
             });
 
-            if (projects.length > 0 && projects.length <= 3) {
-                const allCoords = projects.flatMap(p => 
-                    p.geometry.coordinates.map(c => [c[1], c[0]])
-                );
-                map.fitBounds(allCoords, { padding: [50, 50] });
+            if (projects.length > 0) {
+                state.map.fitBounds(bounds, { padding: [50, 50] });
             }
         }
 
-        function showProjectDetails(project) {
-            const statusClass = project.status.toLowerCase().replace(/ /g, '-');
-            
+        // -- UI Logic --
+        function selectProject(project) {
+            const statusClass = project.status.replace(/ /g, '-');
+            const issuesBadge = project.issues_reported > 0 
+                ? `<div class="badge badge-Delayed" style="margin-top:8px"><i class="ri-alert-fill"></i> ${project.issues_reported} Issues Reported</div>` 
+                : '';
+
             const html = `
-                <h2 style="margin-top: 2rem;">${escapeHtml(project.road_name)}</h2>
-                <span class="status-badge status-${statusClass}">${escapeHtml(project.status)}</span>
-                ${project.issues_reported > 0 ? 
-                    `<span class="issues-badge">${project.issues_reported} Issues Reported</span>` : ''}
-                
-                <div class="detail-section">
-                    <h3>📋 Project Details</h3>
-                    <p><strong>District:</strong> ${escapeHtml(project.district)}</p>
-                    <p><strong>Description:</strong> ${escapeHtml(project.description)}</p>
-                    <p><strong>Total Cost:</strong> ${escapeHtml(project.total_cost)}</p>
+                <h2>${escapeHtml(project.road_name)}</h2>
+                <div class="badge badge-${statusClass}">${project.status}</div>
+                ${issuesBadge}
+
+                <h3>Overview</h3>
+                <div class="info-grid">
+                    <div class="info-item full-width">
+                        <label>Description</label>
+                        <div>${escapeHtml(project.description)}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Total Cost</label>
+                        <div style="font-family: monospace; font-size: 1rem">${escapeHtml(project.total_cost)}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>District</label>
+                        <div>${escapeHtml(project.district)}</div>
+                    </div>
                 </div>
 
-                <div class="detail-section">
-                    <h3>⏱️ Timeline</h3>
-                    <p><strong>Start Date:</strong> ${escapeHtml(project.start_date)}</p>
-                    <p><strong>Target Completion:</strong> ${escapeHtml(project.completion_date)}</p>
+                <h3>Timeline</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Started</label>
+                        <div>${escapeHtml(project.start_date)}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Target Completion</label>
+                        <div>${escapeHtml(project.completion_date)}</div>
+                    </div>
                 </div>
 
-                <div class="detail-section">
-                    <h3>👷 Construction</h3>
-                    <p><strong>Contractor:</strong> ${escapeHtml(project.contractor)}</p>
-                    <p><strong>Maintenance Firm:</strong> ${escapeHtml(project.maintenance_firm)}</p>
-                </div>
-
-                <div class="detail-section">
-                    <h3>👔 Accountability</h3>
-                    <p><strong>Minister Involved:</strong> ${escapeHtml(project.minister_involved)}</p>
-                    <p><strong>Approving Official:</strong> ${escapeHtml(project.approving_official)}</p>
+                <h3>Responsibility</h3>
+                <div class="info-grid">
+                    <div class="info-item full-width">
+                        <label>Contractor</label>
+                        <div>${escapeHtml(project.contractor)}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Official</label>
+                        <div>${escapeHtml(project.approving_official)}</div>
+                    </div>
+                    <div class="info-item">
+                        <label>Minister</label>
+                        <div>${escapeHtml(project.minister_involved)}</div>
+                    </div>
                 </div>
             `;
 
@@ -300,65 +476,86 @@
             document.getElementById('sidebar').classList.remove('visible');
         }
 
-        function updateStats(projects) {
-            document.getElementById('totalProjects').textContent = projects.length;
-            
-            const totalIssues = projects.reduce((sum, p) => sum + (p.issues_reported || 0), 0);
-            document.getElementById('totalIssues').textContent = totalIssues;
-            
-            const costs = projects.map(p => {
-                const match = p.total_cost.match(/(\d+)/);
-                return match ? parseInt(match[1]) : 0;
-            });
-            const total = costs.reduce((sum, cost) => sum + cost, 0);
-            document.getElementById('totalInvestment').textContent = `₹${total} Cr`;
-        }
+        // -- Search & Filter --
+        const searchInput = document.getElementById('searchInput');
+        let debounceTimer;
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        let searchTimeout;
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            clearTimeout(searchTimeout);
-            const query = e.target.value.toLowerCase().trim();
-            
-            if (query.length < 2) {
-                displayProjects(allProjects);
-                return;
-            }
-
-            searchTimeout = setTimeout(() => {
-                const filtered = allProjects.filter(p => 
-                    p.road_name.toLowerCase().includes(query) ||
-                    p.district.toLowerCase().includes(query) ||
-                    p.contractor.toLowerCase().includes(query) ||
-                    p.description.toLowerCase().includes(query)
-                );
-
-                displayProjects(filtered);
-
-                if (filtered.length === 1) {
-                    const coords = filtered[0].geometry.coordinates;
-                    const latLngs = coords.map(c => [c[1], c[0]]);
-                    map.fitBounds(latLngs, { padding: [50, 50] });
-                    showProjectDetails(filtered[0]);
-                }
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                applyFilters();
             }, 300);
         });
 
-        window.onload = () => {
-            initMap();
-            loadProjects();
-        };
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeSidebar();
+        function filterMap(status, element) {
+            // Visual chip selection
+            if(element) {
+                document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+                element.classList.add('active');
             }
+            state.currentFilter = status;
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const query = searchInput.value.toLowerCase().trim();
+            const filtered = state.projects.filter(p => {
+                const matchesSearch = !query || 
+                    p.road_name.toLowerCase().includes(query) || 
+                    p.district.toLowerCase().includes(query) ||
+                    p.contractor.toLowerCase().includes(query);
+                
+                const matchesStatus = state.currentFilter === 'All' || p.status === state.currentFilter;
+
+                return matchesSearch && matchesStatus;
+            });
+
+            renderMap(filtered);
+            
+            // Only update stats if we have filters applied? 
+            // Usually global stats are better, but let's update them to reflect the view
+            updateStats(filtered); 
+
+            if (filtered.length === 0) {
+                showToast("No projects found matching criteria");
+            }
+        }
+
+        function updateStats(projects) {
+            // Animate numbers? For now, simple text replacement
+            document.getElementById('statCount').textContent = projects.length;
+            
+            const totalIssues = projects.reduce((acc, curr) => acc + (curr.issues_reported || 0), 0);
+            document.getElementById('statIssues').textContent = totalIssues;
+
+            // Extract numeric value from cost string (assuming "₹ 500 Cr" format)
+            const totalCost = projects.reduce((acc, curr) => {
+                const match = curr.total_cost.match(/(\d+)/);
+                return acc + (match ? parseInt(match[1]) : 0);
+            }, 0);
+            
+            document.getElementById('statCost').textContent = `₹${totalCost} Cr`;
+        }
+
+        // -- Utilities --
+        function escapeHtml(text) {
+            if (!text) return 'N/A';
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').textContent = msg;
+            toast.classList.add('visible');
+            setTimeout(() => toast.classList.remove('visible'), 3000);
+        }
+
+        // Map click background close sidebar
+        document.getElementById('map').addEventListener('click', (e) => {
+             // Only if clicking purely on the map div, not controls
+             if(e.target.id === 'map') closeSidebar();
         });
+
     </script>
 </body>
 </html>
